@@ -149,7 +149,6 @@ class Client:
         except:
             #error here
             pass
-        print(components)
         for i in range(1, len(components)):
             tempArgs = re.split(":", components[i])
             try:
@@ -158,10 +157,13 @@ class Client:
                 #error here
                 continue
 
+
+        command = components[0]
+        print(command)
         print(args)
 
-        #-----WIP AUTHENTICATION SYSTEM -----#
-        command = components[0]
+                #-----WIP AUTHENTICATION SYSTEM -----#
+
         if command == "AUTHENTICATE":
             if self.authenticate(args["username"], args["password"]):
                 print("auth success")
