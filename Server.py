@@ -19,10 +19,13 @@ import socket
 import threading
 import time
 import sys
+import hashlib
 
 HEADER = 64
 
-Clients = []
+HashCnt = 0
+
+Clients = {}
 
 HOST = socket.gethostbyname(socket.gethostname())
 PORT = 12346
@@ -39,28 +42,38 @@ except:
 s.listen(5)
 print("[LISTENER] - Server listening on: " + str(HOST) + ", port: " + str(PORT))
 
-def ClientConnectionListener(conn, addr):
-    connected = True
-    print("[ClientConnectionListener] - New thread started for " + addr[0] + ":" + str(addr[1]))
-    while connected:
-        try:
-            msg_length = conn.recv(HEADER).decode(FORMAT)
-        except Exception as error:
-            print("[ClientConnectionListener] - Disconnecting - Connection error from " + addr[0] + ":" + str(addr[1]) + " - %s" % error)
-            connected = False
-        else:
-            if msg_length:
-                msg_length = int(msg_length)
-                msg = conn.recv(msg_length).decode(FORMAT)
-                print(f"[{addr}] {msg}")
-            else:
-                print("[ClientConnectionListener] - Disconnecting - " + addr[0] + ":" + str(addr[1]) + " closed the connection")
+class Client:
+    def __init__ (self, conn, addr):
+        global HashCnt
+        self.ID = HashCnt
+        HashCnt += 1
+        self.conn = conn
+        self.addr = addr
+
+    def ClientConnectionListener(self):
+        connected = True
+        print("[ClientConnectionListener] - New thread started for " + addr[0] + ":" + str(addr[1]))
+        while connected:
+            try:
+                msg_length = conn.recv(HEADER).decode(FORMAT)
+            except Exception as error:
+                print("[ClientConnectionListener] - Disconnecting - Connection error from " + addr[0] + ":" + str(addr[1]) + " - %s" % error)
                 connected = False
-    conn.close()
-    print("[ClientConnectionListener] - Disconnected - " + addr[0] + ":" + str(addr[1]))
+            else:
+                if msg_length:
+                    msg_length = int(msg_length)
+                    msg = conn.recv(msg_length).decode(FORMAT)
+                    print(f"[{addr}] {msg}")
+                else:
+                    print("[ClientConnectionListener] - Disconnecting - " + addr[0] + ":" + str(addr[1]) + " closed the connection")
+                    connected = False
+        conn.close()
+        print("[ClientConnectionListener] - Disconnected - " + addr[0] + ":" + str(addr[1]))
 
 while True:
     conn, addr  = s.accept()
     print("[LISTENER]Connection from: " + str(addr))
-    thread = threading.Thread(target=ClientConnectionListener, args=(conn, addr))
+    tempClient = Client(conn, addr)
+    Clients[tempClient.ID] = tempClient
+    thread = threading.Thread(target=Clients[tempClient.ID].ClientConnectionListener)
     thread.start()
