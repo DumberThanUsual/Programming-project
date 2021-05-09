@@ -50,6 +50,7 @@ s.listen(5)
 print("[LISTENER] - Server listening on: " + str(HOST) + ", port: " + str(PORT))
 
 class Match:
+    # ---------ADD MATCHES TO MATCH LIST TO KEEP TRACK -------------------
     def __init__ (self, player1ID, player2ID):
         global matchCnt
         self.ID = matchCnt
