@@ -20,6 +20,7 @@ import threading
 import time
 import sys
 import hashlib
+import re
 
 HEADER = 64
 
@@ -49,8 +50,37 @@ class Client:
         HashCnt += 1
         self.conn = conn
         self.addr = addr
+        self.auth = 0
 
-    def ClientConnectionListener(self):
+        thread = threading.Thread(target=self.clientConnectionListener)
+        thread.start()
+
+    def disconnect(self):
+        pass
+
+    def parseMessage(self, message):
+        args = {}
+        try:
+            components = re.split("\s+", message)
+        except:
+            #error here
+            pass
+        print(components)
+        for i in range(1, len(components)):
+            tempArgs = re.split(":", components[i])
+            try:
+                args[tempArgs[0]] = tempArgs[1]
+            except:
+                #error here
+                continue
+
+        print(args)
+        if components[0] == "AUTHENTICATE":
+            if args["username"] == "boi" and args["password"] == "yea":
+                print("success")
+
+
+    def clientConnectionListener(self):
         connected = True
         print("[ClientConnectionListener] - New thread started for " + addr[0] + ":" + str(addr[1]))
         while connected:
@@ -64,10 +94,12 @@ class Client:
                     msg_length = int(msg_length)
                     msg = conn.recv(msg_length).decode(FORMAT)
                     print(f"[{addr}] {msg}")
+                    self.parseMessage(msg)
                 else:
                     print("[ClientConnectionListener] - Disconnecting - " + addr[0] + ":" + str(addr[1]) + " closed the connection")
                     connected = False
         conn.close()
+        self.disconnect()
         print("[ClientConnectionListener] - Disconnected - " + addr[0] + ":" + str(addr[1]))
 
 while True:
@@ -75,5 +107,3 @@ while True:
     print("[LISTENER]Connection from: " + str(addr))
     tempClient = Client(conn, addr)
     Clients[tempClient.ID] = tempClient
-    thread = threading.Thread(target=Clients[tempClient.ID].ClientConnectionListener)
-    thread.start()
