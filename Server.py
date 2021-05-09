@@ -21,14 +21,18 @@ import time
 import sys
 import hashlib
 import re
+import random
 
 HEADER = 64
 
-HashCnt = 0
+clientCnt = 0
+matchCnt = 0
 
 clients = {}
 
 matching = []
+
+matches = []
 
 HOST = socket.gethostbyname(socket.gethostname())
 PORT = 12346
@@ -47,8 +51,60 @@ print("[LISTENER] - Server listening on: " + str(HOST) + ", port: " + str(PORT))
 
 class Match:
     def __init__ (self, player1ID, player2ID):
+        global matchCnt
+        self.ID = matchCnt
+        matchCnt += 1
         self.player1ID = player1ID
+        self.player1Name = clients[player1ID].name
+        self.player1Score = 0
         self.player2ID = player2ID
+        self.player2Name = clients[player2ID].name
+        self.player2Score = 0
+        self.sendToPlayer("MATCHED opponent:{player2Name}", True, False)
+        self.sendToPlayer("MATCHED opponent:{player1Name}", False, True)
+        print("[MATCH {player1ID} Vs {player2ID}] - Match starting")
+        for i in range(1, 5):
+            print("[MATCH {player1ID} Vs {player2ID}] - Round {i}")
+            self.sendToPlayer("UPDATE key:round value:{i}", True, True)
+            self.player1LastState = False
+            self.player1State = False
+            self.player2LastState = False
+            self.player2State = False
+            self.sendToPlayer("PROMPT type:roll", True, True)
+            while not self.player1State and not self.player2State:
+                if self.player1LastState != self.player1State:
+                    self.player1Rolls = [random.randint(1,6), random.randint(1,6)]
+                    self.sendToPlayer("UPDATE player:1 key:rolls value:{self.player1Rolls}", True, True)
+                    if self.player1rolls[0] == self.player1Rolls [1]:
+                        thirdRoll = random.randint(1,6)
+                        self.player1Score += thirdRoll
+                        self.sendToPlayer("UPDATE player:1 key:thirdRoll value:{thirdRoll}", True, True)
+                    self.player1Score += self.player1Rolls[0] + self.player1Rolls[1]
+                    if self.player1Score % 2 == 0:
+                        self.player1Score += 10
+                    else:
+                        self.player1Score -= 5
+                    self.sendToPlayer("UPDATE player:2 key:score value:{self.player1Score}", True, True)
+                if self.player2LastState != self.player2State:
+                    self.player2Rolls = [random.randint(1,6), random.randint(1,6)]
+                    self.sendToPlayer("UPDATE player:2 key:rolls value:{self.player1Rolls}", True, True)
+                    if self.player2rolls[0] == self.player2Rolls [1]:
+                        thirdRoll = random.randint(1,6)
+                        self.player2Score += thirdRoll
+                        self.sendToPlayer("UPDATE player:2 key:thirdRoll value:{thirdRoll}", True, True)
+                    self.player2Score += self.player2Rolls[0] + self.player2Rolls[1]
+                    if self.player2Score % 2 == 0:
+                        self.player2Score += 10
+                    else:
+                        self.player2Score -= 5
+                    self.sendToPlayer("UPDATE player:2 key:score value:{self.player1Score}", True, True)
+                self.player1LastState = self.player1State
+                self.player2LastState = self.player2State
+            if self.player1Score < 0:
+                self.player1Score = 0
+            if self.player2Score < 0:
+                self.player2Score = 0
+
 
     def sendToPlayer(self, message, player1 = False, player2 = False):
         if player1:
@@ -58,12 +114,13 @@ class Match:
 
 class Client:
     def __init__ (self, conn, addr):
-        global HashCnt
-        self.ID = HashCnt
-        HashCnt += 1
+        global clientCnt
+        self.ID = clientCnt
+        clientCnt += 1
         self.conn = conn
         self.addr = addr
         self.auth = 0
+        self.name = "LMAO"
 
         thread = threading.Thread(target=self.clientConnectionListener)
         thread.start()
