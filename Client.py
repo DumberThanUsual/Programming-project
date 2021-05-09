@@ -13,13 +13,12 @@ def send(msg):
     send_length += b' ' * (HEADER - len(send_length))
     s.send(send_length)
     s.send(message)
-    
+
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.connect((HOST, PORT))
     send('AUTHENTICATE username:boi password:yea')
     print('hello world')
     time.sleep(1)
-    send('fuck off')
-    print('fuck off')
+    send('fk off')
+    print('fk off')
     time.sleep(5)
-    

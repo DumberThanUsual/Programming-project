@@ -45,6 +45,17 @@ except:
 s.listen(5)
 print("[LISTENER] - Server listening on: " + str(HOST) + ", port: " + str(PORT))
 
+class Match:
+    def __init__ (self, player1ID, player2ID):
+        self.player1ID = player1ID
+        self.player2ID = player2ID
+
+    def sendToPlayer(self, message, player1 = False, player2 = False):
+        if player1:
+            clients[player1ID].sendToClient(message)
+        if player2:
+            clients[player2ID].sendToClient(message)
+
 class Client:
     def __init__ (self, conn, addr):
         global HashCnt
@@ -57,8 +68,8 @@ class Client:
         thread = threading.Thread(target=self.clientConnectionListener)
         thread.start()
 
-    def sendAllToClient(self, message):
-        message = msg.encode(FORMAT)
+    def sendToClient(self, message):
+        message = message.encode(FORMAT)
         msg_length = len(message)
         send_length = str(msg_length).encode(FORMAT)
         send_length += b' ' * (HEADER - len(send_length))
