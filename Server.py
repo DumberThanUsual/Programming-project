@@ -26,7 +26,9 @@ HEADER = 64
 
 HashCnt = 0
 
-Clients = {}
+clients = {}
+
+matching = []
 
 HOST = socket.gethostbyname(socket.gethostname())
 PORT = 12346
@@ -55,6 +57,20 @@ class Client:
         thread = threading.Thread(target=self.clientConnectionListener)
         thread.start()
 
+    def sendAllToClient(self, message):
+        message = msg.encode(FORMAT)
+        msg_length = len(message)
+        send_length = str(msg_length).encode(FORMAT)
+        send_length += b' ' * (HEADER - len(send_length))
+        s.send(send_length)
+        s.sendall(message)
+
+    def checkAuth(self):
+        return True
+
+    def authenticate(self, username, password):
+        return True
+
     def disconnect(self):
         pass
 
@@ -75,9 +91,18 @@ class Client:
                 continue
 
         print(args)
-        if components[0] == "AUTHENTICATE":
-            if args["username"] == "boi" and args["password"] == "yea":
-                print("success")
+
+        #-----WIP AUTHENTICATION SYSTEM -----#
+        command = components[0]
+        if command == "AUTHENTICATE":
+            if self.authenticate(args["username"], args["password"]):
+                print("auth success")
+                #GENERATE TOKEN ETC
+                matching.append(self.ID)
+            else:
+                pass
+                #SEND ERROR TO CLIENT
+        #elif command == ""
 
 
     def clientConnectionListener(self):
@@ -102,8 +127,16 @@ class Client:
         self.disconnect()
         print("[ClientConnectionListener] - Disconnected - " + addr[0] + ":" + str(addr[1]))
 
+def matchmaking():
+    while True:
+        if len(matching) >= 2:
+            print("match")
+
+thread = threading.Thread(target=matchmaking)
+thread.start()
+
 while True:
     conn, addr  = s.accept()
     print("[LISTENER]Connection from: " + str(addr))
     tempClient = Client(conn, addr)
-    Clients[tempClient.ID] = tempClient
+    clients[tempClient.ID] = tempClient
