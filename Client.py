@@ -1,5 +1,6 @@
 import socket
 import time
+import threading
 
 HOST = '192.168.1.71'  # The server's hostname or IP address
 PORT = 12346        # The port used by the server
@@ -11,15 +12,38 @@ def send(msg):
     msg_length = len(message)
     send_length = str(msg_length).encode(FORMAT)
     send_length += b' ' * (HEADER - len(send_length))
-    s.send(send_length)
-    s.send(message)
-    
-with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-    s.connect((HOST, PORT))
-    send('AUTHENTICATE username:boi password:yea')
-    print('hello world')
-    time.sleep(1)
-    send('fuck off')
-    print('fuck off')
-    time.sleep(500)
-    
+    conn.send(send_length)
+    conn.send(message)
+
+def connectionListener(conn):
+    connected = True
+    while connected:
+        try:
+            msg_length = conn.recv(HEADER).decode(FORMAT)
+        except Exception as error:
+            connected = False
+        else:
+            if msg_length:
+                msg_length = int(msg_length)
+                msg = conn.recv(msg_length).decode(FORMAT)
+                print(f"{msg}")
+            else:
+                connected = False
+    disconnect()
+    print("Disconnected from server...")
+    quit()
+
+def disconnect():
+    conn.close()
+
+conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+try:
+    conn.connect((HOST, PORT))
+except Exception as error:
+    print("Unable to connect to server:")
+    print("%s" % error)
+    quit()
+thread = threading.Thread(target=connectionListener, args=(conn,))
+thread.start()
+send('AUTHENTICATE username:boi password:yea')
+time.sleep(500)
