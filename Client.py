@@ -16,10 +16,10 @@ def send(msg):
     
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.connect((HOST, PORT))
-    send('Hello, world')
+    send('AUTHENTICATE username:boi password:yea')
     print('hello world')
     time.sleep(1)
     send('fuck off')
     print('fuck off')
-    time.sleep(500)
+    time.sleep(5)
     
