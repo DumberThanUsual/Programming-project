@@ -45,5 +45,5 @@ except Exception as error:
     quit()
 thread = threading.Thread(target=connectionListener, args=(conn,))
 thread.start()
-send('AUTHENTICATE username:boi password:yea')
+send('MAIN AUTHENTICATE username:boi password:yea')
 time.sleep(500)

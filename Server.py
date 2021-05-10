@@ -30,9 +30,9 @@ matchCnt = 0
 
 clients = {}
 
-matching = []
+matches = {}
 
-matches = []
+matching = []
 
 HOST = socket.gethostbyname(socket.gethostname())
 PORT = 12346
@@ -50,7 +50,6 @@ s.listen(5)
 print("[LISTENER] - Server listening on: " + str(HOST) + ", port: " + str(PORT))
 
 class Match:
-    # ---------ADD MATCHES TO MATCH LIST TO KEEP TRACK -------------------
     def __init__ (self, player1ID, player2ID):
         global matchCnt
         self.ID = matchCnt
@@ -67,10 +66,7 @@ class Match:
         for i in range(1, 5):
             print(f"[MATCH {self.player1ID} Vs {self.player2ID}] - Round {i}")
             self.sendToPlayer(f"UPDATE key:round value:{i}", True, True)
-            self.player1LastState = False
-            self.player1State = False
-            self.player2LastState = False
-            self.player2State = False
+            self.player1LastState, self.player1State, self.player2LastState, self.player2State = False
             self.sendToPlayer(f"PROMPT type:roll", True, True)
             while not self.player1State and not self.player2State:
                 if self.player1LastState != self.player1State:
@@ -101,6 +97,7 @@ class Match:
                     self.sendToPlayer(f"UPDATE player:2 key:score value:{self.player1Score}", True, True)
                 self.player1LastState = self.player1State
                 self.player2LastState = self.player2State
+                time.delay(0.1)
             if self.player1Score < 0:
                 self.player1Score = 0
             if self.player2Score < 0:
@@ -112,6 +109,9 @@ class Match:
             clients[self.player1ID].sendToClient(message)
         if player2:
             clients[self.player2ID].sendToClient(message)
+
+    def inputHandler(self, message):
+        pass
 
 class Client:
     def __init__ (self, conn, addr):
@@ -141,30 +141,14 @@ class Client:
         return True
 
     def disconnect(self):
-        pass
+        self.conn.close()
 
-    def parseMessage(self, message):
-        args = {}
-        try:
-            components = re.split("\s+", message)
-        except:
-            #error here
-            pass
-        for i in range(1, len(components)):
-            tempArgs = re.split(":", components[i])
-            try:
-                args[tempArgs[0]] = tempArgs[1]
-            except:
-                #error here
-                continue
-
-
-        command = components[0]
-        print(command)
-        print(args)
+    def inputHandler(self, message):
 
                 #-----WIP AUTHENTICATION SYSTEM -----#
-
+        command = message[0]
+        args = message[1]
+        print(args)
         if command == "AUTHENTICATE":
             if self.authenticate(args["username"], args["password"]):
                 print("auth success")
@@ -176,13 +160,16 @@ class Client:
                 #SEND ERROR TO CLIENT
         #elif command == ""
 
+    def messageError(self):
+        print("error")
+
 
     def clientConnectionListener(self):
         connected = True
         print("[ClientConnectionListener] - New thread started for " + addr[0] + ":" + str(addr[1]))
         while connected:
             try:
-                msg_length = conn.recv(HEADER).decode(FORMAT)
+                msg_length = self.conn.recv(HEADER).decode(FORMAT)
             except Exception as error:
                 print("[ClientConnectionListener] - Disconnecting - Connection error from " + addr[0] + ":" + str(addr[1]) + " - %s" % error)
                 connected = False
@@ -191,28 +178,55 @@ class Client:
                     msg_length = int(msg_length)
                     msg = conn.recv(msg_length).decode(FORMAT)
                     print(f"[{addr}] {msg}")
-                    self.parseMessage(msg)
+                    parsedMessage = parseMessage(msg)
+                    if parsedMessage:
+                        if parsedMessage[0] == "GAME":
+                            if hasattr(self, 'matchID'):
+                                matches[self.matchID].inputHandler((parsedMessage[1], parsedMessage[2]))
+                            else:
+                                self.messageError()
+                        else:
+                            self.inputHandler((parsedMessage[1], parsedMessage[2]))
+                    else:
+                        pass
                 else:
                     print("[ClientConnectionListener] - Disconnecting - " + addr[0] + ":" + str(addr[1]) + " closed the connection")
                     connected = False
-        conn.close()
+
         self.disconnect()
         print("[ClientConnectionListener] - Disconnected - " + addr[0] + ":" + str(addr[1]))
+
+def parseMessage(message):
+    args = {}
+    try:
+        components = re.split("\s+", message)
+    except:
+        return False
+        pass
+    for i in range(2, len(components)):
+        tempArgs = re.split(":", components[i])
+        try:
+            args[tempArgs[0]] = tempArgs[1]
+        except:
+            return False
+            continue
+    return (components[0], components[1], args)
 
 def matchmaking():
     while True:
         if len(matching) >= 2:
-            print("match")
-            Match(matching[0], matching[1])
+            print(f"[MATCHMAKING] - Starting new match - {matching[0]} Vs {matching[1]}")
+            tempMatch = Match(matching[0], matching[1])
+            matches[tempMatch.ID] = tempMatch
+            clients[matching[0]].matchID, clients[matching[1]].matchID = tempMatch.ID
             matching.pop(0)
             matching.pop(1)
 
 
-thread = threading.Thread(target=matchmaking)
-thread.start()
+threading.Thread(target=matchmaking).start()
 
 while True:
     conn, addr  = s.accept()
-    print("[LISTENER]Connection from: " + str(addr))
+    print("[LISTENER] - Connection from: " + str(addr))
     tempClient = Client(conn, addr)
     clients[tempClient.ID] = tempClient
