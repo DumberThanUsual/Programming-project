@@ -1,1 +1,6 @@
-{}
+{
+  "players":[
+    {"username":"testuser1", "password":"password", "score":0},
+    {"username":"testuser2", "password":"password", "score":0}
+  ]
+}
