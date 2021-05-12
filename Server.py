@@ -122,8 +122,8 @@ class Client:
         clientCnt += 1
         self.conn = conn
         self.addr = addr
-        self.auth = 0
-        self.name = "LMAO"
+        self.auth = False
+        self.name = "logging in..."
 
         thread = threading.Thread(target=self.clientConnectionListener)
         thread.start()
@@ -142,50 +142,61 @@ class Client:
     def disconnect(self):
         self.conn.close()
 
-    def inputHandler(self, message):
-
-                #-----WIP AUTHENTICATION SYSTEM -----#
+    def authenticationHandler(self, message):
         command = message[0]
         args = message[1]
-        print(args)
+        #print(args)
         if command == "AUTHENTICATE":
-            if authenticate(args["username"], args["password"]):
-                print(f"[AUTHENTICATION] - {args['username']} logged in successfully")
-                #GENERATE TOKEN ETC
-                matching.append(self.ID)
-            else:
-                print(f"[AUTHENTICATION] - unsuccessful login attenpt from {self.addr[0]}")
-                #SEND ERROR TO CLIENT
-        #elif command == ""
+            file = open(PLAYERFILE, "r")
+            playerFile = json.loads(file.read())
+            file.close()
+            try:
+                if playerFile["players"][args["username"]]["password"] == args["password"]:
+                    #-------------successful login attempt----------
+                    print(f"[AUTHENTICATION] - {args['username']} logged in successfully")
+                    self.name = args['username']
+                    self.auth = True
+                    matching.append(self.ID)
+                else:
+                    print(f"[AUTHENTICATION] - unsuccessful login attenpt from {self.addr[0]} - incorrect password")
+                    #password incorrect
+            except:
+                print(f"[AUTHENTICATION] - unsuccessful login attenpt from {self.addr[0]} - username not found")
+                # username not found
 
     def messageError(self):
         print("error")
-
 
     def clientConnectionListener(self):
         connected = True
         print("[ClientConnectionListener] - New thread started for " + addr[0] + ":" + str(addr[1]))
         while connected:
             try:
-                msg_length = self.conn.recv(HEADER).decode(FORMAT)
-            except Exception as error:
-                print("[ClientConnectionListener] - Disconnecting - Connection error from " + addr[0] + ":" + str(addr[1]) + " - %s" % error)
+                msg_length = self.conn.recv(HEADER).decode(FORMAT)                                                                                      #try to recieve rest of message
+            except Exception as error:                                                                                                                  #catch any errors
+                print("[ClientConnectionListener] - Disconnecting - Connection error from " + addr[0] + ":" + str(addr[1]) + " - %s" % error)           #print the errors
                 connected = False
             else:
                 if msg_length:
                     msg_length = int(msg_length)
                     msg = conn.recv(msg_length).decode(FORMAT)
-                    print(f"[{addr}] {msg}")
+                    #print(f"[{addr}] {msg}")
+                    #--------------MESSAGE HANDLING--------------
                     parsedMessage = parseMessage(msg)
                     if parsedMessage:
-                        if parsedMessage[0] == "GAME":
-                            if hasattr(self, 'matchID'):
-                                matches[self.matchID].inputHandler((parsedMessage[1], parsedMessage[2]))
+                        if parsedMessage[0] == "GAME": #send to game input handler
+                            if hasattr(self, 'matchID'): #if player is in game
+                                matches[self.matchID].inputHandler((parsedMessage[1], parsedMessage[2])) #send input to game handler
                             else:
-                                self.messageError()
+                                # not in match
+                                pass
+                        elif parsedMessage[0] == "AUTHENTICATE": #send to authentication Handler
+                            self.authenticationHandler((parsedMessage[1], parsedMessage[2]))
                         else:
-                            self.inputHandler((parsedMessage[1], parsedMessage[2]))
+                            # message not recognised
+                            pass
                     else:
+                        #malformed message
                         pass
                 else:
                     print("[ClientConnectionListener] - Disconnecting - " + addr[0] + ":" + str(addr[1]) + " closed the connection")
@@ -207,8 +218,7 @@ def parseMessage(message):
             args[tempArgs[0]] = tempArgs[1]
         except:
             return False
-            continue
-    return (components[0], components[1], args)
+    return (components[0], components[1],  args)
 
 def matchmaking():
     while True:
@@ -219,18 +229,6 @@ def matchmaking():
             clients[matching[0]].matchID, clients[matching[1]].matchID = tempMatch.ID
             matching.pop(0)
             matching.pop(1)
-
-def authenticate(username, password):
-    file = open(PLAYERFILE, "r")
-    playerFile = json.loads(file.read())
-    file.close()
-    try:
-        if playerFile["players"][username]["password"] == password:
-            return True
-        else:
-            return False
-    except:
-        return False
 
 threading.Thread(target=matchmaking).start()
 
