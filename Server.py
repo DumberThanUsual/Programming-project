@@ -22,6 +22,7 @@ import sys
 import hashlib
 import re
 import random
+import json
 
 HEADER = 64
 
@@ -37,6 +38,7 @@ matching = []
 HOST = socket.gethostbyname(socket.gethostname())
 PORT = 12346
 FORMAT = 'UTF-8'
+PLAYERFILE = "users.json"
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -60,19 +62,19 @@ class Match:
         self.player2ID = player2ID
         self.player2Name = clients[player2ID].name
         self.player2Score = 0
-        self.sendToPlayer(f"MATCHED opponent:{self.player2Name}", True, False)
-        self.sendToPlayer(f"MATCHED opponent:{self.player1Name}", False, True)
+        self.sendToPlayer(f"GAME MATCHED opponent:{self.player2Name}", True, False)
+        self.sendToPlayer(f"GAME MATCHED opponent:{self.player1Name}", False, True)
         print(f"[MATCH {player1ID} Vs {player2ID}] - Match starting")
         for i in range(1, 5):
             print(f"[MATCH {self.player1ID} Vs {self.player2ID}] - Round {i}")
-            self.sendToPlayer(f"UPDATE key:round value:{i}", True, True)
-            self.player1LastState, self.player1State, self.player2LastState, self.player2State = False
+            self.sendToPlayer(f"GAME UPDATE key:round value:{i}", True, True)
+            self.player1LastState, self.player1State, self.player2LastState, self.player2State = False, False, False, False
             self.sendToPlayer(f"PROMPT type:roll", True, True)
             while not self.player1State and not self.player2State:
                 if self.player1LastState != self.player1State:
                     self.player1Rolls = [random.randint(1,6), random.randint(1,6)]
                     self.sendToPlayer(f"UPDATE player:1 key:rolls value:{self.player1Rolls}", True, True)
-                    if self.player1rolls[0] == self.player1Rolls [1]:
+                    if self.player1Rolls[0] == self.player1Rolls [1]:
                         thirdRoll = random.randint(1,6)
                         self.player1Score += thirdRoll
                         self.sendToPlayer(f"UPDATE player:1 key:thirdRoll value:{thirdRoll}", True, True)
@@ -85,7 +87,7 @@ class Match:
                 if self.player2LastState != self.player2State:
                     self.player2Rolls = [random.randint(1,6), random.randint(1,6)]
                     self.sendToPlayer(f"UPDATE player:2 key:rolls value:{self.player1Rolls}", True, True)
-                    if self.player2rolls[0] == self.player2Rolls [1]:
+                    if self.player2Rolls[0] == self.player2Rolls [1]:
                         thirdRoll = random.randint(1,6)
                         self.player2Score += thirdRoll
                         self.sendToPlayer(f"UPDATE player:2 key:thirdRoll value:{thirdRoll}", True, True)
@@ -97,7 +99,7 @@ class Match:
                     self.sendToPlayer(f"UPDATE player:2 key:score value:{self.player1Score}", True, True)
                 self.player1LastState = self.player1State
                 self.player2LastState = self.player2State
-                time.delay(0.1)
+                time.sleep(0.1)
             if self.player1Score < 0:
                 self.player1Score = 0
             if self.player2Score < 0:
@@ -137,9 +139,6 @@ class Client:
     def checkAuth(self):
         return True
 
-    def authenticate(self, username, password):
-        return True
-
     def disconnect(self):
         self.conn.close()
 
@@ -150,9 +149,8 @@ class Client:
         args = message[1]
         print(args)
         if command == "AUTHENTICATE":
-            if self.authenticate(args["username"], args["password"]):
-                print("auth success")
-                self.sendToClient("REEEEEEEEE")
+            if authenticate(args["username"], args["password"]):
+                print(f"{args["username"]} logged in successfully")
                 #GENERATE TOKEN ETC
                 matching.append(self.ID)
             else:
@@ -221,7 +219,12 @@ def matchmaking():
             clients[matching[0]].matchID, clients[matching[1]].matchID = tempMatch.ID
             matching.pop(0)
             matching.pop(1)
-
+def authenticate(username, password):
+    playerFile = json.loads(open(PLAYERFILE, "rt"))
+    if playerFile["players"][username]["password"] == password:
+        return True
+    else:
+        return False
 
 threading.Thread(target=matchmaking).start()
 
