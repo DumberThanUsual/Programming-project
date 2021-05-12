@@ -150,7 +150,7 @@ class Client:
         print(args)
         if command == "AUTHENTICATE":
             if authenticate(args["username"], args["password"]):
-                print(f"{args["username"]} logged in successfully")
+                print(f"{args['username']} logged in successfully")
                 #GENERATE TOKEN ETC
                 matching.append(self.ID)
             else:
