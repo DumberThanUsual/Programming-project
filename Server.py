@@ -150,11 +150,11 @@ class Client:
         print(args)
         if command == "AUTHENTICATE":
             if authenticate(args["username"], args["password"]):
-                print(f"{args['username']} logged in successfully")
+                print(f"[AUTHENTICATION] - {args['username']} logged in successfully")
                 #GENERATE TOKEN ETC
                 matching.append(self.ID)
             else:
-                pass
+                print(f"[AUTHENTICATION] - unsuccessful login attenpt from {self.addr[0]}")
                 #SEND ERROR TO CLIENT
         #elif command == ""
 
@@ -219,11 +219,17 @@ def matchmaking():
             clients[matching[0]].matchID, clients[matching[1]].matchID = tempMatch.ID
             matching.pop(0)
             matching.pop(1)
+
 def authenticate(username, password):
-    playerFile = json.loads(open(PLAYERFILE, "rt"))
-    if playerFile["players"][username]["password"] == password:
-        return True
-    else:
+    file = open(PLAYERFILE, "r")
+    playerFile = json.loads(file.read())
+    file.close()
+    try:
+        if playerFile["players"][username]["password"] == password:
+            return True
+        else:
+            return False
+    except:
         return False
 
 threading.Thread(target=matchmaking).start()
