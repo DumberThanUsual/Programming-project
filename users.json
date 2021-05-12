@@ -1,6 +1,6 @@
 {
-  "players":[
+  "players":{
     "testuser1":{"password":"password", "score":0},
     "testuser2":{"password":"password", "score":0}
-  ]
+  }
 }
