@@ -26,7 +26,8 @@ FORMAT = 'UTF-8'
 HEADER = 64
 
 match = {
-    "opponent":None
+    "opponent":None,
+    "round":0
 }
 
 def send(msg):
@@ -70,7 +71,73 @@ def connectionListener(conn):
     quit()
 
 def gameHandler(message):
-    pass
+    global match
+    if message[0] == "UPDATE":
+
+        value = message[1]["value"]
+        key = message[1]["key"]
+        try:
+            valueType = message[1]["type"]
+        except:
+            match[key] = value
+        else:
+            if valueType == "int":
+                match[key] = int(value)
+            elif valueType == "array":
+                match[key] = re.split(",", value)
+            else:
+                match[key] = value
+
+        try:
+            notify = message[1]["notify"]
+        except:
+            notify = False
+
+        if notify == "true":
+            if key == "round":
+                if match[key] != 6:
+                    print(f"---------------Round number {match['round']}---------------")
+                    print()
+                else:
+                    print("---------------EQUAL SCORES - SUDDEN DEATH---------------")
+
+            elif key == "opponentRolls":
+                print(f"{match['opponent']} rolled {match[key][0]} and {match[key][1]}")
+                print()
+            elif key == "selfRolls":
+                print(f"You rolled {match[key][0]} and {match[key][1]}")
+                print()
+
+            elif key == "opponentThirdRoll":
+                print(f"{match['opponent']} rolled a double and gets a third roll! They rolled a {match[key]}")
+                print()
+            elif key == "selfThirdRoll":
+                print(f"You rolled a double and get a third roll! You rolled a {match[key]}")
+                print()
+
+            elif key == "opponentScore":
+                print(f"{match['opponent']}'s score is' {match[key]}")
+                print()
+            elif key == "selfScore":
+                print(f"Your score is {match[key]}")
+                print()
+
+            elif key == "opponentRoll":
+                print(f"{match['opponent']} rolled {match[key]}")
+                print()
+            elif key == "selfRoll":
+                print(f"You rolled {match[key]}")
+                print()
+    elif message[0] == "END":
+        print("---------------END OF MATCH---------------")
+        selfScore = message[1]["selfScore"]
+        print(f"You scored: {selfScore}")
+        opponentScore = message[1]["opponentScore"]
+        print(f"{match['opponent']} scored: {opponentScore}")
+        if selfScore > opponentScore:
+            print("You win!")
+        else:
+            print("You lose!")
 
 def matchmakingHandler(message):
     global matchmakingState
@@ -104,8 +171,8 @@ except Exception as error:
     quit()
 thread = threading.Thread(target=connectionListener, args=(conn,))
 thread.start()
-username = input("username:")
-password = input("password:")
+username = "testuser1"
+password = "password"
 send(f'AUTHENTICATE AUTHENTICATE username:{username} password:{password}')
 
 authState = None
@@ -136,4 +203,5 @@ while matchmakingState != True:
 
 print("Matched against " + match["opponent"])
 
-time.sleep(500)
+while conn:
+    time.sleep(1)

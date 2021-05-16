@@ -53,6 +53,10 @@ print("[LISTENER] - Server listening on: " + str(HOST) + ", port: " + str(PORT))
 
 class Match:
     def __init__ (self, player1ID, player2ID):
+        threading.Thread(target=self.match, args=(player1ID, player2ID)).start()
+        print(f"[{player1ID} Vs {player2ID}] - New thread started")
+
+    def match (self, player1ID, player2ID):
         global matchCnt
         self.ID = matchCnt
         matchCnt += 1
@@ -65,45 +69,91 @@ class Match:
         self.sendToPlayer(f"MATCHMAKING MATCHED opponent:{self.player2Name}", True, False)
         self.sendToPlayer(f"MATCHMAKING MATCHED opponent:{self.player1Name}", False, True)
         print(f"[MATCH {player1ID} Vs {player2ID}] - Match starting")
-        for i in range(1, 5):
+        time.sleep(2)
+        for i in range(1, 6):
             print(f"[MATCH {self.player1ID} Vs {self.player2ID}] - Round {i}")
-            self.sendToPlayer(f"GAME UPDATE key:round value:{i}", True, True)
-            self.player1LastState, self.player1State, self.player2LastState, self.player2State = False, False, False, False
-            self.sendToPlayer(f"PROMPT type:roll", True, True)
-            while not self.player1State and not self.player2State:
-                if self.player1LastState != self.player1State:
-                    self.player1Rolls = [random.randint(1,6), random.randint(1,6)]
-                    self.sendToPlayer(f"UPDATE player:1 key:rolls value:{self.player1Rolls}", True, True)
-                    if self.player1Rolls[0] == self.player1Rolls [1]:
-                        thirdRoll = random.randint(1,6)
-                        self.player1Score += thirdRoll
-                        self.sendToPlayer(f"UPDATE player:1 key:thirdRoll value:{thirdRoll}", True, True)
-                    self.player1Score += self.player1Rolls[0] + self.player1Rolls[1]
-                    if self.player1Score % 2 == 0:
-                        self.player1Score += 10
-                    else:
-                        self.player1Score -= 5
-                    self.sendToPlayer(f"UPDATE player:2 key:score value:{self.player1Score}", True, True)
-                if self.player2LastState != self.player2State:
-                    self.player2Rolls = [random.randint(1,6), random.randint(1,6)]
-                    self.sendToPlayer(f"UPDATE player:2 key:rolls value:{self.player1Rolls}", True, True)
-                    if self.player2Rolls[0] == self.player2Rolls [1]:
-                        thirdRoll = random.randint(1,6)
-                        self.player2Score += thirdRoll
-                        self.sendToPlayer(f"UPDATE player:2 key:thirdRoll value:{thirdRoll}", True, True)
-                    self.player2Score += self.player2Rolls[0] + self.player2Rolls[1]
-                    if self.player2Score % 2 == 0:
-                        self.player2Score += 10
-                    else:
-                        self.player2Score -= 5
-                    self.sendToPlayer(f"UPDATE player:2 key:score value:{self.player1Score}", True, True)
-                self.player1LastState = self.player1State
-                self.player2LastState = self.player2State
-                time.sleep(0.1)
+            self.sendToPlayer(f"GAME UPDATE key:round value:{i} type:int notify:true", True, True)
+
+            self.player1Rolls = [random.randint(1,6), random.randint(1,6)]
+            self.sendToPlayer(f"GAME UPDATE key:opponentRolls value:{self.player1Rolls[0]},{self.player1Rolls[1]} type:array notify:true", False, True)
+            self.sendToPlayer(f"GAME UPDATE key:selfRolls value:{self.player1Rolls[0]},{self.player1Rolls[1]} type:array notify:true", True, False)
+            if self.player1Rolls[0] == self.player1Rolls [1]:
+                thirdRoll = random.randint(1,6)
+                self.player1Score += thirdRoll
+                self.sendToPlayer(f"GAME UPDATE key:opponentThirdRoll value:{thirdRoll} notify:true", False, True)
+                self.sendToPlayer(f"GAME UPDATE key:selfThirdRoll value:{thirdRoll} notify:true", True, False)
+            self.player1Score += self.player1Rolls[0] + self.player1Rolls[1]
+            if self.player1Score % 2 == 0:
+                self.player1Score += 10
+            else:
+                self.player1Score -= 5
+
+            self.player2Rolls = [random.randint(1,6), random.randint(1,6)]
+            self.sendToPlayer(f"GAME UPDATE key:selfRolls value:{self.player2Rolls[0]},{self.player2Rolls[1]} type:array notify:true", False, True)
+            self.sendToPlayer(f"GAME UPDATE key:opponentRolls value:{self.player2Rolls[0]},{self.player2Rolls[1]} type:array notify:true", True, False)
+            if self.player2Rolls[0] == self.player2Rolls [1]:
+                thirdRoll = random.randint(1,6)
+                self.player2Score += thirdRoll
+                self.sendToPlayer(f"GAME UPDATE key:selfThirdRoll value:{thirdRoll} notify:true", False, True)
+                self.sendToPlayer(f"GAME UPDATE key:opponentThirdRoll value:{thirdRoll} notify:true", True, False)
+            self.player2Score += self.player2Rolls[0] + self.player2Rolls[1]
+            if self.player2Score % 2 == 0:
+                self.player2Score += 10
+            else:
+                self.player2Score -= 5
+
             if self.player1Score < 0:
                 self.player1Score = 0
             if self.player2Score < 0:
                 self.player2Score = 0
+
+            time.sleep(2)
+
+        time.sleep(0.5)
+
+        self.sendToPlayer(f"GAME UPDATE key:selfScore value:{self.player2Score} type:int notify:true", False, True)
+        self.sendToPlayer(f"GAME UPDATE key:selfScore value:{self.player1Score} type:int notify:true", True, False)
+        self.sendToPlayer(f"GAME UPDATE key:opponentScore value:{self.player1Score} type:int notify:true", False, True)
+        self.sendToPlayer(f"GAME UPDATE key:opponentScore value:{self.player2Score} type:int notify:true", True, False)
+
+        time.sleep(0.5)
+
+        if self.player1Score == self.player2Score:
+            self.sendToPlayer(f"GAME UPDATE key:round value:6 type:int notify:true", True, True)
+            print(f"[MATCH {self.player1ID} Vs {self.player2ID}] - Round 6 - sudden death")
+            while self.player1Score == self.player2Score:
+                self.player1Roll = random.randint(1,6)
+                self.player2Roll = random.randint(1,6)
+                self.sendToPlayer(f"GAME UPDATE key:selfRoll value:{self.player2Roll} notify:true", False, True)
+                self.sendToPlayer(f"GAME UPDATE key:opponentRoll value:{self.player2Roll} notify:true", True, False)
+                self.sendToPlayer(f"GAME UPDATE key:selfRoll value:{self.player1Roll} notify:true", True, False)
+                self.sendToPlayer(f"GAME UPDATE key:opponentRoll value:{self.player1Roll} notify:true", False, True)
+                self.player1Score += self.player1Roll
+
+                if self.player1Score % 2 == 0:
+                    self.player1Score += 10
+                else:
+                    self.player1Score -= 5
+
+                self.player2Score += self.player2Roll
+
+                if self.player2Score % 2 == 0:
+                    self.player2Score += 10
+                else:
+                    self.player2Score -= 5
+
+                time.sleep(2)
+
+        self.sendToPlayer(f"GAME END selfScore:{self.player2Score} opponentScore:{self.player1Score} type:int notify:true", False, True)
+        self.sendToPlayer(f"GAME END selfScore:{self.player1Score} opponentScore:{self.player2Score} type:int notify:true", True, False)
+        print(f"[MATCH {self.player1ID} Vs {self.player2ID}] - Match ended - storing results")
+        with open(PLAYERFILE, 'r') as f:
+            json_data = json.load(f)
+            json_data['players'][self.player1Name]["score"] += self.player1Score
+            json_data['players'][self.player2Name]["score"] += self.player2Score
+
+        with open(PLAYERFILE, 'w') as f:
+            f.write(json.dumps(json_data))
 
 
     def sendToPlayer(self, message, player1 = False, player2 = False):
@@ -230,14 +280,16 @@ def parseMessage(message):
     return (components[0], components[1],  args)
 
 def matchmaking():
+    global matching
     while True:
         if len(matching) >= 2:
             print(f"[MATCHMAKING] - Starting new match - {matching[0]} Vs {matching[1]}")
             tempMatch = Match(matching[0], matching[1])
             matches[tempMatch.ID] = tempMatch
-            clients[matching[0]].matchID, clients[matching[1]].matchID = tempMatch.ID
-            matching.pop(0)
-            matching.pop(1)
+            clients[matching[0]].matchID, clients[matching[1]].matchID = tempMatch.ID, tempMatch.ID
+            matching.remove(tempMatch.player1ID)
+            matching.remove(tempMatch.player2ID)
+        time.sleep(0.4)
 
 threading.Thread(target=matchmaking).start()
 
