@@ -123,10 +123,9 @@ class Client:
         self.conn = conn
         self.addr = addr
         self.auth = False
-        self.name = "logging in..."
+        self.name = None
 
-        thread = threading.Thread(target=self.clientConnectionListener)
-        thread.start()
+        threading.Thread(target=self.clientConnectionListener).start()
 
     def sendToClient(self, message):
         message = message.encode(FORMAT)
@@ -156,12 +155,15 @@ class Client:
                     print(f"[AUTHENTICATION] - {args['username']} logged in successfully")
                     self.name = args['username']
                     self.auth = True
+                    self.sendToClient("AUTHENTICATE SUCCESS")
                     matching.append(self.ID)
                 else:
                     print(f"[AUTHENTICATION] - unsuccessful login attenpt from {self.addr[0]} - incorrect password")
+                    self.sendToClient("AUTHENTICATE FAIL")
                     #password incorrect
             except:
                 print(f"[AUTHENTICATION] - unsuccessful login attenpt from {self.addr[0]} - username not found")
+                self.sendToClient("AUTHENTICATE FAIL")
                 # username not found
 
     def messageError(self):
