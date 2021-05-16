@@ -40,21 +40,14 @@ PORT = 12346
 FORMAT = 'UTF-8'
 PLAYERFILE = "users.json"
 
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-try:
-  s.bind((HOST, PORT))
-except:
-  print("[LISTENER] - Bind failed. Error : " + str(sys.exc_info()))
-  sys.exit()
-
-s.listen(5)
-print("[LISTENER] - Server listening on: " + str(HOST) + ", port: " + str(PORT))
 
 class Match:
     def __init__ (self, player1ID, player2ID):
         threading.Thread(target=self.match, args=(player1ID, player2ID)).start()
         print(f"[{player1ID} Vs {player2ID}] - New thread started")
+
+    def close (self):
+        pass
 
     def match (self, player1ID, player2ID):
         global matchCnt
@@ -189,6 +182,11 @@ class Client:
         return True
 
     def disconnect(self):
+        clients.remove(self.ID)
+        matching.remove(self.ID)
+        for match in matches:
+            if match.player1ID == self.ID or match.player2ID == self.ID:
+                match.close()
         self.conn.close()
 
     def authenticationHandler(self, message):
@@ -225,19 +223,20 @@ class Client:
 
     def clientConnectionListener(self):
         connected = True
-        print("[ClientConnectionListener] - New thread started for " + addr[0] + ":" + str(addr[1]))
+        print("[ClientConnectionListener] - New thread started for " + self.addr[0] + ":" + str(self.addr[1]))
         while connected:
             try:
                 msg_length = self.conn.recv(HEADER).decode(FORMAT)                                                                                      #try to recieve rest of message
             except Exception as error:                                                                                                                  #catch any errors
-                print("[ClientConnectionListener] - Disconnecting - Connection error from " + addr[0] + ":" + str(addr[1]) + " - %s" % error)           #print the errors
+                print("[ClientConnectionListener] - Disconnecting - Connection error from " + self.addr[0] + ":" + str(self.addr[1]) + " - %s" % error)           #print the errors
                 connected = False
             else:
                 if msg_length:
                     msg_length = int(msg_length)
-                    msg = conn.recv(msg_length).decode(FORMAT)
+                    msg = self.conn.recv(msg_length).decode(FORMAT)
                     #print(f"[{addr}] {msg}")
                     #--------------MESSAGE HANDLING--------------
+                    print(msg)
                     parsedMessage = parseMessage(msg)
                     if parsedMessage:
                         if parsedMessage[0] == "GAME":                                                                                                  #send to game input handler
@@ -257,11 +256,11 @@ class Client:
                         #malformed message
                         pass
                 else:
-                    print("[ClientConnectionListener] - Disconnecting - " + addr[0] + ":" + str(addr[1]) + " closed the connection")
+                    print("[ClientConnectionListener] - Disconnecting - " + self.addr[0] + ":" + str(self.addr[1]) + " closed the connection")
                     connected = False
 
         self.disconnect()
-        print("[ClientConnectionListener] - Disconnected - " + addr[0] + ":" + str(addr[1]))
+        print("[ClientConnectionListener] - Disconnected - " + self.addr[0] + ":" + str(self.addr[1]))
 
 
 def parseMessage(message):
@@ -291,10 +290,24 @@ def matchmaking():
             matching.remove(tempMatch.player2ID)
         time.sleep(0.4)
 
-threading.Thread(target=matchmaking).start()
+def clientListener(s):
+    global clients
+    while True:
+        conn, addr  = s.accept()
+        print("[LISTENER] - Connection from: " + str(addr))
+        tempClient = Client(conn, addr)
+        clients[tempClient.ID] = tempClient
 
-while True:
-    conn, addr  = s.accept()
-    print("[LISTENER] - Connection from: " + str(addr))
-    tempClient = Client(conn, addr)
-    clients[tempClient.ID] = tempClient
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+try:
+  s.bind((HOST, PORT))
+except:
+  print("[LISTENER] - Bind failed. Error : " + str(sys.exc_info()))
+  sys.exit()
+
+s.listen(5)
+print("[LISTENER] - Server listening on: " + str(HOST) + ", port: " + str(PORT))
+
+threading.Thread(target=matchmaking).start()
+threading.Thread(target=clientListener, args=(s,)).start()

@@ -171,8 +171,8 @@ except Exception as error:
     quit()
 thread = threading.Thread(target=connectionListener, args=(conn,))
 thread.start()
-username = "testuser1"
-password = "password"
+username = input("username:")
+password = input("password:")
 send(f'AUTHENTICATE AUTHENTICATE username:{username} password:{password}')
 
 authState = None
