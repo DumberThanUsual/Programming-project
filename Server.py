@@ -62,8 +62,8 @@ class Match:
         self.player2ID = player2ID
         self.player2Name = clients[player2ID].name
         self.player2Score = 0
-        self.sendToPlayer(f"GAME MATCHED opponent:{self.player2Name}", True, False)
-        self.sendToPlayer(f"GAME MATCHED opponent:{self.player1Name}", False, True)
+        self.sendToPlayer(f"MATCHMAKING MATCHED opponent:{self.player2Name}", True, False)
+        self.sendToPlayer(f"MATCHMAKING MATCHED opponent:{self.player1Name}", False, True)
         print(f"[MATCH {player1ID} Vs {player2ID}] - Match starting")
         for i in range(1, 5):
             print(f"[MATCH {self.player1ID} Vs {self.player2ID}] - Round {i}")
@@ -156,7 +156,6 @@ class Client:
                     self.name = args['username']
                     self.auth = True
                     self.sendToClient("AUTHENTICATE SUCCESS")
-                    matching.append(self.ID)
                 else:
                     print(f"[AUTHENTICATION] - unsuccessful login attenpt from {self.addr[0]} - incorrect password")
                     self.sendToClient("AUTHENTICATE FAIL")
@@ -165,6 +164,11 @@ class Client:
                 print(f"[AUTHENTICATION] - unsuccessful login attenpt from {self.addr[0]} - username not found")
                 self.sendToClient("AUTHENTICATE FAIL")
                 # username not found
+
+    def matchmakingHandler(self, message):
+        if message[0] == "JOIN":
+            matching.append(self.ID)
+            self.sendToClient("MATCHMAKING STATUS status:matching")
 
     def messageError(self):
         print("error")
@@ -186,14 +190,16 @@ class Client:
                     #--------------MESSAGE HANDLING--------------
                     parsedMessage = parseMessage(msg)
                     if parsedMessage:
-                        if parsedMessage[0] == "GAME": #send to game input handler
-                            if hasattr(self, 'matchID'): #if player is in game
-                                matches[self.matchID].inputHandler((parsedMessage[1], parsedMessage[2])) #send input to game handler
+                        if parsedMessage[0] == "GAME":                                                                                                  #send to game input handler
+                            if hasattr(self, 'matchID'):                                                                                                #if player is in game
+                                matches[self.matchID].inputHandler((parsedMessage[1], parsedMessage[2]))                                                #send input to game handler
                             else:
                                 # not in match
                                 pass
                         elif parsedMessage[0] == "AUTHENTICATE": #send to authentication Handler
                             self.authenticationHandler((parsedMessage[1], parsedMessage[2]))
+                        elif parsedMessage[0] == "MATCHMAKING": #send to matchmaking Handler
+                            self.matchmakingHandler((parsedMessage[1], parsedMessage[2]))
                         else:
                             # message not recognised
                             pass
@@ -206,6 +212,7 @@ class Client:
 
         self.disconnect()
         print("[ClientConnectionListener] - Disconnected - " + addr[0] + ":" + str(addr[1]))
+
 
 def parseMessage(message):
     args = {}

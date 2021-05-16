@@ -8,7 +8,9 @@ PORT = 12346        # The port used by the server
 FORMAT = 'UTF-8'
 HEADER = 64
 
-authState = None
+match = {
+    "opponent":None
+}
 
 def send(msg):
     message = msg.encode(FORMAT)
@@ -40,11 +42,29 @@ def connectionListener(conn):
                 parsedMessage = parseMessage(msg)
                 if parsedMessage[0] == "AUTHENTICATE":
                     authenticationHandler((parsedMessage[1], parsedMessage[2]))
+                elif parsedMessage[0] == "MATCHMAKING":
+                    matchmakingHandler((parsedMessage[1], parsedMessage[2]))
+                elif parsedMessage[0] == "GAME":
+                    gameHandler((parsedMessage[1], parsedMessage[2]))
             else:
                 connected = False
     disconnect()
     print("Disconnected from server...")
     quit()
+
+def gameHandler(message):
+    pass
+
+def matchmakingHandler(message):
+    global matchmakingState
+    global match
+    if message[0] == "MATCHED":
+        matchmakingState = True
+        match["opponent"] = message[1]["opponent"]
+    elif message[0] == "STATUS":
+        if message[1]["status"] == "matching":
+            matchmakingState = "matching"
+
 
 def authenticationHandler(message):
     global authState
@@ -55,6 +75,8 @@ def authenticationHandler(message):
 
 def disconnect():
     conn.close()
+
+#----------MAIN GAME LOOP------------
 
 conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 try:
@@ -69,6 +91,8 @@ username = input("username:")
 password = input("password:")
 send(f'AUTHENTICATE AUTHENTICATE username:{username} password:{password}')
 
+authState = None
+
 while authState == None:
     time.sleep(0.1)
 
@@ -77,4 +101,22 @@ if authState == "SUCCESS":
 elif authState == "FAIL":
     print("Unsuccessfull login attempt")
     quit()
+
+matchmakingState = None
+
+send(f'MATCHMAKING JOIN')
+print("Joining queue")
+print("awaiting server response...")
+
+while matchmakingState != True:
+    time.sleep(0.1)
+    if matchmakingState == False:
+        print("Unable to join queue - matchmaking issue")
+        quit()
+    if matchmakingState == "matching":
+        print("Matching...")
+        matchmakingState = None
+
+print("Matched against " + match["opponent"])
+
 time.sleep(500)
