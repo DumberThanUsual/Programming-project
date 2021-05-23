@@ -19,6 +19,7 @@ import socket
 import time
 import threading
 import re
+import json
 
 HOST = '192.168.1.71'  # The server's hostname or IP address
 PORT = 12346        # The port used by the server
@@ -138,6 +139,34 @@ def gameHandler(message):
             print("You win!")
         else:
             print("You lose!")
+        send("RANKING RANK a:None")
+
+    if message[0] == "RANKING":
+
+        value = message[1]["value"]
+        try:
+            valueType = message[1]["type"]
+        except:
+            pass
+        else:
+            if valueType == "int":
+                value = int(value)
+            elif valueType == "array":
+                value = re.split(",", value)
+
+        try:
+            notify = message[1]["notify"]
+        except:
+            notify = False
+
+        if notify == "true":
+            ranks = json.loads(bytearray.fromhex(message[1]["value"]).decode())
+            print()
+            print("Here are the total ranks:")
+            print()
+            for player in ranks:
+                print(f"{player}: {ranks[str(player)]}")
+                print()
 
 def matchmakingHandler(message):
     global matchmakingState

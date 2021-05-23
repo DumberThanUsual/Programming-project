@@ -182,7 +182,7 @@ class Client:
         return True
 
     def disconnect(self):
-        clients.remove(self.ID)
+        clients.pop(self.ID)
         matching.remove(self.ID)
         for match in matches:
             if match.player1ID == self.ID or match.player2ID == self.ID:
@@ -249,6 +249,8 @@ class Client:
                             self.authenticationHandler((parsedMessage[1], parsedMessage[2]))
                         elif parsedMessage[0] == "MATCHMAKING": #send to matchmaking Handler
                             self.matchmakingHandler((parsedMessage[1], parsedMessage[2]))
+                        elif parsedMessage[0] == "RANKING": #send to rank Handler
+                            self.sendToClient(f"GAME RANKING value:{returnSendableRankings()} notify:true")
                         else:
                             # message not recognised
                             pass
@@ -305,6 +307,15 @@ try:
 except:
   print("[LISTENER] - Bind failed. Error : " + str(sys.exc_info()))
   sys.exit()
+
+def returnSendableRankings():
+    with open(PLAYERFILE, 'r') as f:
+        json_data = json.load(f)
+    f.close()
+    constructedData = {}
+    for player in json_data["players"]:
+        constructedData[str(player)] = json_data["players"][str(player)]["score"]
+    return json.dumps(constructedData).encode('utf-8').hex()
 
 s.listen(5)
 print("[LISTENER] - Server listening on: " + str(HOST) + ", port: " + str(PORT))
