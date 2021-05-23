@@ -182,11 +182,14 @@ class Client:
         return True
 
     def disconnect(self):
-        clients.pop(self.ID)
-        matching.remove(self.ID)
         for match in matches:
-            if match.player1ID == self.ID or match.player2ID == self.ID:
-                match.close()
+            if (matches[match].player1ID == self.ID) or (matches[match].player2ID == self.ID):
+                matches[match].close()
+        clients.pop(self.ID)
+        try:
+            matching.remove(self.ID)
+        except:
+            pass
         self.conn.close()
 
     def authenticationHandler(self, message):
